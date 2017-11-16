@@ -1,20 +1,41 @@
-// $(document).ready(function(){
-    // $('#MyTable').DataTable();
-    
-//initially there is no filter, present all of the data
+//initially there is no filter, display all of the data
 var filteredData = dataSet;
 
-var $loadMoreBtn = document.querySelector("#load-btn");
+var $loadPrevBtn = document.querySelector("#load-prev");
+var $loadNextBtn = document.querySelector("#load-next");
+
+btn = document.querySelector("#filter")
+btn.addEventListener("click", filterSitings)
+
+//allow for clearing of all filters
+resetBtn = document.querySelector("#reset");
+resetBtn.addEventListener("click",function(){
+
+    document.querySelector("#datetime").value = '';
+    document.querySelector("#city").value = '';
+    document.querySelector("#state").value = '';
+    document.querySelector("#country").value = '';
+    document.querySelector("#shape").value = '';
+    document.querySelector("#comments").value = '';
+    filteredData = dataSet;
+    render_table();
+})
 
 // Set a startingIndex and resultsPerPage variable
 var startingIndex = 0;
-var resultsPerPage = 10;
+
+var showNum = document.querySelector("#showNum"); 
+var resultsPerPage = showNum.value;
+
+showNum.addEventListener("change",function(){
+    render_table();
+})
+
 
 var table = document.createElement("table")
 var tablePlaceHolder = document.querySelector("#tablePlaceHolder")
 table.className="table table-striped";
-// table.className = "dataTable";
-// table.setAttribute("id","MyTable");
+table.setAttribute("data-toggle","table");
 tablePlaceHolder.appendChild(table)
 
 // create the table header
@@ -23,71 +44,93 @@ var thead = table.createTHead();
 theadrow = thead.insertRow();
 for (var k = 0; k < theadlist.length; k++){
     if (theadlist[k] != 'durationMinutes'){
-        var th = document.createElement("th")
-        th.innerHTML = theadlist[k]
+        var th = document.createElement("th");
+        th.setAttribute("data-field",theadlist[k])
+        th.setAttribute("data-sortable",'true');
+        th.innerHTML = theadlist[k];
     }
     theadrow.appendChild(th)    
 }
 
 //add a row of filter inputs
-{/* <div class="form-group">
-          <input type="text" class="form-control" id="date" placeholder="m/d/yyyy">
-          <!-- <input data-provide="datepicker"> -->
-          <a id="search" class="btn btn-default">Search</a>
-        </div> */}
 theadrow = thead.insertRow();
 for (var k = 0; k < theadlist.length; k++){
     if (theadlist[k] != 'durationMinutes'){
         var th = document.createElement("th")
         th.innerHTML = "<input type='text' class='form-control' id='" + theadlist[k] + "'>"
     }
-    // if (theadlist[k] == 'comments'){
-    //     th.innerHTML =  "<input type='text' class='form-control' id='" + theadlist[k] + "'>"
-    // }
     theadrow.appendChild(th)    
 }
 
 var tbody = table.createTBody();
 
-btn = document.querySelector("#filter")
+function checkPagination(resultsPerPage){
+    console.log("checkPagination");
+    console.log("starting: " + startingIndex);
+    console.log("resultsPerpge:" + resultsPerPage);
 
-btn.addEventListener("click", filterSitings)
-
+    if (startingIndex + resultsPerPage >= filteredData.length) {
+        $loadNextBtn.classList.add("disabled");
+        $loadNextBtn.removeEventListener("click", loadNext);
+      }
+      // allow previous results when previous available
+      if (startingIndex - resultsPerPage >= 0){
+          $loadPrevBtn.classList.remove("disabled");
+          $loadPrevBtn.addEventListener("click",loadPrevious);
+      }
+      if (startingIndex - resultsPerPage < 0){
+        $loadPrevBtn.classList.add("disabled");
+        $loadPrevBtn.removeEventListener("click", loadPrevious);
+      }
+      
+      // allow next results when next available
+      if (startingIndex + resultsPerPage <= filteredData.length) {
+          $loadNextBtn.classList.remove("disabled");
+          $loadNextBtn.addEventListener("click",loadNext);
+      }
+}
 
 function render_table(){
 
   // Set the value of endingIndex to startingIndex + resultsPerPage
+  var resultsPerPage = document.querySelector("#showNum").value; 
+  console.log(resultsPerPage)
   var endingIndex = startingIndex + resultsPerPage;
+
+  console.log("rendertbale");
+  console.log("starting: " + startingIndex);
+  console.log("resultsPerpge:" + resultsPerPage);
+
+
+  checkPagination(resultsPerPage);
+
   // Get a section of the addressData array to render
   var sitingsSubset = filteredData.slice(startingIndex, endingIndex);
 
     if (filteredData.length == 0) {
         var Results = document.querySelector("#Results")
-        Results.innerHTML = "<h1>No sitings match that search criteria</h1>"
-        filteredData=dataSet;
+        Results.innerHTML = "<h3>No sitings match that search criteria </h3>" //- showing all " + dataSet.length + " results</h3>"
+        filteredData='';
 
     }
     else{
         var Results = document.querySelector("#Results")
         if (filteredData == dataSet){
-            Results.innerHTML = "<h3>" + filteredData.length + " total sitings logged</h3>"
+            Results.innerHTML = "<h3>" + filteredData.length + " Total Sitings</h3>"
 
         }
         else {
             Results.innerHTML = "<h3>" + filteredData.length + " results match that search criteria</h3>"    
         }
+    }
 
         tbody.innerHTML='';
-        // for (var c = 0; c< filteredData.length; c++){
         var sitingsSubset = filteredData.slice(startingIndex, endingIndex);
 
         for (var c = 0; c< sitingsSubset.length; c++){
-        // for (var c = 0; c< 5; c++){
             row = tbody.insertRow(c);
             cells = Object.keys(sitingsSubset[c])
-            // cells = Object.keys(filteredData[c])
             thisSiting = sitingsSubset[c]
-            // thisSiting = filteredData[c]
             for (var d=0; d< cells.length; d++){
                 if (cells[d] != 'durationMinutes') {
                     cell = row.insertCell()
@@ -97,8 +140,6 @@ function render_table(){
 
             }
         }
-    }
-
 }
 
 function filterSitings(){
@@ -137,29 +178,24 @@ function filterSitings(){
         var sitingShape = sitings.shape.substring(0, inputShape.length).trim().toLowerCase();
         // var sitingDuration = sitings.durationMinutes.substring(0, inputDuration.length);
         if (inputComments.length > 0){
-            var sitingComments = sitings.comments.toString();
+            var sitingComments = sitings.comments.toString().toLowerCase() + " Duration: " + sitingsDuration;
         }
         else{
             var sitingComments = '';
         }
 
-        console.log("formattedSitingDate: " + formattedSitingDate);
-        console.log("formattedInputDate" + formattedInputDate);
         if (formattedSitingDate === formattedInputDate 
             && sitingCity === inputCity 
             && sitingState === inputState
             && sitingCountry === inputCountry 
             && sitingShape === inputShape
-            // && sitingDuration === inputDuration
-            // && sitingComments === inputComments
             && sitingComments.includes(inputComments)
         ) {
           return true;
         }
         return false;
 
-        // If true, add the address to the filteredData, otherwise don't add it to filteredData
-        // return formattedSitingDate.getTime()  === formattedInputDate.getTime()  &&  sitingState  === 'ca';
+        // If true, add the siting to the filteredData, otherwise don't add it to filteredData
       });
 
     render_table();
@@ -167,20 +203,21 @@ function filterSitings(){
 
 }
 
-// Add an event listener to the button, call handleButtonClick when clicked
-$loadMoreBtn.addEventListener("click", handleButtonClick);
+$loadNextBtn.addEventListener("click", loadNext);
 
-function handleButtonClick() {
-  // Increase startingIndex by resultsPerPage and render the next section of the table
-  startingIndex += resultsPerPage;
-  render_table();
-  // Check to see if there are any more results to render
-  if (startingIndex + resultsPerPage >= filteredData.length) {
-    $loadMoreBtn.classList.add("disabled");
-    $loadMoreBtn.innerText = "No more sitings to load";
-    $loadMoreBtn.removeEventListener("click", handleButtonClick);
+
+function loadNext() {
+    resultsPerPage = document.querySelector("#showNum").value;
+    // Increase startingIndex by resultsPerPage and render the next section of the table
+    startingIndex += resultsPerPage;
+    render_table();
   }
-}
+
+  function loadPrevious() {
+    resultsPerPage = document.querySelector("#showNum").value;
+    // Decrease startingIndex by resultsPerPage and render the pervious section of the table
+    startingIndex -= resultsPerPage;
+    render_table();
+  }
 
 render_table();
-// });
